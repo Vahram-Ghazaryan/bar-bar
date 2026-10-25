@@ -16,6 +16,10 @@ MODEL_REPOS = {
 def download(model_name: str = None):
     if not model_name:
         model_name = os.environ.get("WHISPER_MODEL", "base")
+    allow_heavy = os.environ.get("ALLOW_HEAVY_WHISPER", "false").lower() == "true"
+    if not allow_heavy and str(model_name).lower() not in ["base", "tiny"]:
+        print(f"  [Memory Guard] Model '{model_name}' exceeds 512MB RAM limits. Overriding to 'base' (145MB)...")
+        model_name = "base"
     repo_id = MODEL_REPOS.get(model_name, model_name)
 
     print("\n" + "=" * 65)
