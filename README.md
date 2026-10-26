@@ -1,8 +1,16 @@
 # BarBar — Հայերեն խոսքի սղագրման համակարգ (Armenian Speech-to-Text Platform)
 
+<div align="center">
+
+[![Production Live App](https://img.shields.io/badge/🌐_Production_App-bar--bar--project.vercel.app-0070f3?style=for-the-badge&logo=vercel&logoColor=white)](https://bar-bar-project.vercel.app)
+[![Status](https://img.shields.io/badge/Status-Online_/_Live-success?style=for-the-badge)](https://bar-bar-project.vercel.app)
+
+</div>
+
 **BarBar**-ը հայերեն խոսքի սղագրման ժամանակակից, ամբողջական (full-stack) հարթակ է, որը նախատեսված է ձայնային խոսքը բարձր ճշգրտությամբ գրավոր տեքստի վերածելու համար։
 
-> **Կարգախոս՝** _Խոսքդ՝ բառ առ բառ։_
+> **Կարգախոս՝** _Խոսքդ՝ բառ առ բառ։_  
+> 🔗 **Production URL՝** [https://bar-bar-project.vercel.app](https://bar-bar-project.vercel.app)
 
 Համակարգը կառուցված է `functional-document.md` (FRS-STT-001) և `technical-document.md` (SDD-STT-001) տեխնիկական և ֆունկցիոնալ պահանջների հիման վրա՝ նուրբ, մինիմալիստական և օգտագործողի համար հարմարավետ ինտերֆեյսով (subtle & elegant UI styles)։
 
@@ -42,6 +50,19 @@
 - **WER (Word Error Rate)** և **CER (Character Error Rate)** հաշվիչ՝ հայերեն տեքստի նորմալիզացիայով և Լևենշտեյնի ալգորիթմով։
 - Մոդելների համեմատական աղյուսակ (`small`, `base`, `taruma/whisper-small-armenian`)։
 
+### 7. Գրանցում և Մուտք (Registration & Login)
+- 🔐 **Անվտանգ նույնականացում (Authentication):** Օգտատերերի գրանցման (`/register`) և մուտքի (`/login`) ամբողջական մեխանիզմ՝ գաղտնաբառերի կրիպտոգրաֆիկ հեշավորմամբ (`scrypt` + salt) և ստորագրված `HttpOnly` սեսիոն cookie-ներով (`HMAC-SHA256` JWT)։
+- 🛡️ **Մուտքի իրավունքների վերահսկում (Route Protection):** Հարթակի էջերը բաժանված են բաց և նույնականացում պահանջող (protected) երթուղիների (Next.js Edge Middleware + Client Route Guard + API Auth Verification).
+  - **Ազատ հասանելի (Public) rout-ներ՝**
+    - `/` (**«Սղագրություն»**) — հիմնական սղագրման աշխատատարածք
+    - `/evaluation` (**«Գնահատում»**) — WER/CER փորձարարական գնահատման հարթակ
+    - `/login` (**«Մուտք»**) և `/register` (**«Գրանցում»**)
+  - **Միայն Authentication-ից հետո հասանելի (Protected) rout-ներ՝**
+    - 🔒 `/history` (**«Պատմություն»**) — օգտատիրոջ պահպանված սղագրությունների պատմություն, որոնում, վերանվանում և հեռացում
+    - 🔒 `/glossary` (**«Բառարան»**) — անհատական համատեքստային հայերենացման բառարանի և հատուկ տերմինների (Special Terms) կառավարում
+    - 🔒 `/settings` (**«Կարգավորումներ»**) — խոսափողի, ճանաչման մոդելի և տեքստային մշակման անհատական կարգավորումների պահպանում (PostgreSQL + LocalStorage սինխրոնացմամբ)
+- Առանց մուտք գործելու `/history`, `/glossary` կամ `/settings` հասցեներին դիմելիս համակարգը ավտոմատ վերահասցեավորում է դեպի `/login` (պահպանելով `callbackUrl`-ը՝ մուտքից հետո նույն էջ վերադառնալու համար)։
+
 ---
 
 ## Ծրագրային կառուցվածք (Architecture)
@@ -49,16 +70,21 @@
 ```
 BarBar/
 ├── src/                          # Next.js 16 Web Tier (React 19, TypeScript, Tailwind)
+│   ├── middleware.ts             # Next.js Route Guard (/history, /glossary, /settings)
 │   ├── app/                      # App Router էջեր և API Routes
-│   │   ├── page.tsx              # Հիմնական սղագրման տարածք (Workspace)
-│   │   ├── history/page.tsx      # Պատմության կառավարում (History)
-│   │   ├── glossary/page.tsx     # Բառարան և հատուկ եզրույթներ (Special Terms)
-│   │   ├── evaluation/page.tsx   # WER / CER գնահատման հարթակ
-│   │   ├── settings/page.tsx     # Կարգավորումներ
-│   │   └── api/                  # RESTful API Endpoints (Sessions, Transcribe, Export, Revert)
-│   ├── components/               # Նուրբ UI բաղադրիչներ (TranscriptEditor, AudioSync, Modals)
+│   │   ├── page.tsx              # Հիմնական սղագրման տարածք (Workspace - Public)
+│   │   ├── login/page.tsx        # Օգտատիրոջ մուտքի էջ (Login)
+│   │   ├── register/page.tsx     # Օգտատիրոջ գրանցման էջ (Registration)
+│   │   ├── history/page.tsx      # Պատմության կառավարում (Protected - Auth Required)
+│   │   ├── glossary/page.tsx     # Բառարան և հատուկ եզրույթներ (Protected - Auth Required)
+│   │   ├── settings/page.tsx     # Կարգավորումներ (Protected - Auth Required)
+│   │   ├── evaluation/page.tsx   # WER / CER գնահատման հարթակ (Public)
+│   │   └── api/                  # RESTful API Endpoints (Auth, Sessions, Transcribe, Glossary, Export)
+│   ├── context/                  # AuthContext (օգտատիրոջ սեսիայի և կարգավորումների կառավարում)
+│   ├── components/               # Նուրբ UI բաղադրիչներ (Navbar, ProtectedRoute, TranscriptEditor, Modals)
 │   └── lib/
-│       ├── db/                   # Sequelize ORM (PostgreSQL & SQLite singleton + Models)
+│       ├── auth/                 # Password hashing (scrypt) և HMAC-SHA256 Session Token վավերացում
+│       ├── db/                   # Sequelize ORM (PostgreSQL singleton + User, Session, Glossary Models)
 │       ├── nlp/                  # Համատեքստային հայերենացման և կետադրության մոդուլներ
 │       └── export/               # TXT (BOM), DOCX, SRT արտահանման գեներատորներ
 │
@@ -102,17 +128,18 @@ BarBar/
    - **Health Check Path:** `/`
 4. Ավելացրեք միջավայրի փոփոխականները (**Environment Variables**)՝
    - `PYTHON_VERSION`: `3.11.9`
-   - `WHISPER_MODEL`: `small` *(կամ `base`)*
+   - `WHISPER_MODEL`: `base` *(խորհուրդ է տրվում Free Tier-ի համար)*
    - `CORS_ORIGINS`: `*` *(կամ Ձեր Vercel դոմեյնը)*
 5. Սեղմեք **Deploy Web Service** և պատճենեք ստացված հղումը (օր․՝ `https://barbar-backend.onrender.com`)։
 
 #### Քայլ 3. Վեբ Հարթակի տեղակայում (Vercel)
 1. Մուտք գործեք **[vercel.com](https://vercel.com)**, սեղմեք **Add New...** → **Project** և ներմուծեք նույն GitHub ռեպոզիտորիան։
 2. Framework Preset-ը ավտոմատ կընտրվի **Next.js**։
-3. **Environment Variables** բաժնում ավելացրեք ընդամենը այս 3-ը՝
+3. **Environment Variables** բաժնում ավելացրեք հետևյալ փոփոխականները՝
    - `DATABASE_URL`: `postgresql://user:password@ep-xyz.us-east-2.aws.neon.tech/neondb?sslmode=require` *(Neon-ի connection string-ը)*
    - `DB_SSL`: `true`
    - `NEXT_PUBLIC_PYTHON_BACKEND_URL`: `https://barbar-backend.onrender.com` *(Միասնական URL՝ թե՛ WebSocket-ի, թե՛ API-ի համար)*
+   - `AUTH_SECRET`: `ձեր-գաղտնի-բանալին` *(Սեսիոն JWT նշանների ստորագրման գաղտնի բանալի)*
 4. Սեղմեք **Deploy**։
 
 ---
@@ -197,3 +224,4 @@ npm start
 | **FR-040 – FR-041** | Պատմության կառավարում, որոնում, ֆիլտրեր             | `HistoryPage.tsx`, Sequelize ORM models                            |
 | **FR-042**          | Աուդիոյի նվագարկում և տեքստի համաժամեցում           | `AudioPlayerSync.tsx`, interactive timestamps                      |
 | **AC-004 – AC-005** | WER/CER գնահատում և Latency չափում                  | `EvaluationPage.tsx`, `metrics.py` framework                       |
+| **AUTH & SECURITY** | Գրանցում/Մուտք և `/history`, `/glossary`, `/settings` երթուղիների պաշտպանում | `middleware.ts`, `ProtectedRoute.tsx`, `/api/auth/*`, `User` model |
